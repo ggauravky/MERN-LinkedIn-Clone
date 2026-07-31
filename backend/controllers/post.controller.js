@@ -1,5 +1,7 @@
 import Post from "../models/post.model.js";
 import cloudinary from "../lib/cloudinary.js";
+import Notification from "../models/notification.model.js";
+import { sendCommentNotificationEmail } from "../emails/emailHandlers.js";
 
 export const getFeedPosts = async (req, res) => {
   try {
@@ -44,7 +46,7 @@ export const createPost = async (req, res) => {
 export const deletePost = async (req, res) => {
   try {
     const postId = req.params.id;
-    const userId=req.user._id;
+    const userId = req.user._id;
 
     const post = await Post.findById(postId);
 
@@ -53,17 +55,75 @@ export const deletePost = async (req, res) => {
     }
 
     if (post.author.toString() !== userId.toString()) {
-      return res.status(403).json({ message: "Unauthorized to delete this post" });
+      return res
+        .status(403)
+        .json({ message: "Unauthorized to delete this post" });
     }
-    if(post.image){
+    if (post.image) {
       const publicId = post.image.split("/").pop().split(".")[0];
       await cloudinary.uploader.destroy(publicId);
     }
 
     await Post.findByIdAndDelete(postId);
     res.status(200).json({ message: "Post deleted successfully" });
-  }catch(error){
+  } catch (error) {
     console.error("Error deleting post:", error);
     res.status(500).json({ message: "Internal server error" });
   }
-}
+};
+
+export const getPostById = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const post = await Post.findById(postId)
+      .populate("author", "name username profilePicture headline ")
+      .populate("comments.user", "name profilePicture username headline");
+
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    res.status(200).json(post);
+  } catch (error) {
+    console.error("Error fetching post by ID:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const createComment = async (req, res) => {
+  try {
+    const postId = req.params.id;
+    const { content } = req.body;
+
+    const post = await Post.findByIdAndUpdate(
+      postId,
+      { $push: { comments: { user: req.user._id, content } } },
+      { new: true }
+    ).populate("author", "name email username profilePicture headline ");
+
+    //create a notification if the post author is not the same as the comment author
+
+    if (post.author._id.toString() !== req.user._id.toString()) {
+      const newNotification = new Notification({
+        user: post.author,
+        type: "comment",
+        relatedUser: req.user._id,
+        relatedPost: postId
+      });
+      await newNotification.save();
+
+      const postUrl = `${process.env.CLIENT_URL}/post/${postId}`;
+      await sendCommentNotificationEmail(
+        post.author.email,
+        post.author.name,
+        req.user.name,
+        postUrl
+      );
+    }
+
+    res.status(201).json(post.comments[post.comments.length - 1]);
+  } catch (error) {
+    console.error("Error creating comment:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
