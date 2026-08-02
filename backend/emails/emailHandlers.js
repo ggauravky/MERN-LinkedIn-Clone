@@ -1,5 +1,5 @@
 import { transporter, sender } from "../lib/nodemailer.js";
-import { createWelcomeEmailTemplate } from "./emailTemplates.js";
+import { createWelcomeEmailTemplate ,createCommentNotificationEmailTemplate } from "./emailTemplates.js";
 
 export const sendWelcomeEmail = async (email, name, profileUrl) => {
   try {
@@ -12,5 +12,37 @@ export const sendWelcomeEmail = async (email, name, profileUrl) => {
     console.log("Welcome email sent successfully:", response.messageId);
   } catch (error) {
     console.error("Error in sending welcome email:", error.message);
+  }
+};
+
+export const sendCommentNotificationEmail = async (
+  recipientEmail,
+  recipientName,
+  commenterName,
+  postUrl,
+  commentContent,
+) => {
+  try {
+    const recipient = await transporter.sendMail({
+      from: sender,
+      to: email,
+      subject: "New Comment on Your Post",
+      html: createCommentNotificationEmailTemplate(
+        recipientName,
+        commenterName,
+        postUrl,
+        commentContent,
+      ),
+      category: "comment_notification",
+    });
+    console.log(
+      "Comment notification email sent successfully:",
+      recipient.messageId,
+    );
+  } catch (error) {
+    console.error(
+      "Error in sending comment notification email:",
+      error.message,
+    );
   }
 };
