@@ -1,5 +1,5 @@
 import { transporter, sender } from "../lib/nodemailer.js";
-import { createWelcomeEmailTemplate ,createCommentNotificationEmailTemplate } from "./emailTemplates.js";
+import { createWelcomeEmailTemplate ,createCommentNotificationEmailTemplate,sendConnectionAcceptedEmail} from "./emailTemplates.js";
 
 export const sendWelcomeEmail = async (email, name, profileUrl) => {
   try {
@@ -22,11 +22,13 @@ export const sendCommentNotificationEmail = async (
   postUrl,
   commentContent,
 ) => {
+  const  recipient=[{ email:recipientEmail }];
+
   try {
-    const recipient = await transporter.sendMail({
-      from: sender,
-      to: email,
-      subject: "New Comment on Your Post",
+  const response = await transporter.sendMail({
+    from: sender,
+    to: email,
+    subject: "New Comment on Your Post",
       html: createCommentNotificationEmailTemplate(
         recipientName,
         commenterName,
@@ -46,3 +48,24 @@ export const sendCommentNotificationEmail = async (
     );
   }
 };
+
+
+export const sendConnectionAcceptedEmail = async (
+  senderEmail,
+  senderName,
+  recipientName,
+  profileUrl,
+)=>{
+  const recipient = [{ email: senderEmail }];
+  try{
+    const response = await transporter.sendMail({
+      from: sender,
+      to: senderEmail,
+      subject: `${recipientName} accepted your connection request`,
+      html: createConnectionAcceptedEmailTemplate(senderName, recipientName, profileUrl),
+      category: "connection_accepted",
+    });
+  }catch(error){
+
+  }
+}
