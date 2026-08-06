@@ -38,7 +38,7 @@ const SignUpForm = () => {
         placeholder="Full name"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="input input-bordered w-full"
+        className="input input-bordered w-full bg-white text-[#000000] placeholder:text-[#666666] border-[#666666] focus:border-[#0a66c2] focus:outline-[#0a66c2]"
         required
       />
       <input
@@ -46,7 +46,7 @@ const SignUpForm = () => {
         placeholder="Username"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
-        className="input input-bordered w-full"
+        className="input input-bordered w-full bg-white text-[#000000] placeholder:text-[#666666] border-[#666666] focus:border-[#0a66c2] focus:outline-[#0a66c2]"
         required
       />
       <input
@@ -54,7 +54,7 @@ const SignUpForm = () => {
         placeholder="Email"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
-        className="input input-bordered w-full"
+        className="input input-bordered w-full bg-white text-[#000000] placeholder:text-[#666666] border-[#666666] focus:border-[#0a66c2] focus:outline-[#0a66c2]"
         required
       />
       <input
@@ -62,14 +62,14 @@ const SignUpForm = () => {
         placeholder="Password (6+ characters)"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        className="input input-bordered w-full"
+        className="input input-bordered w-full bg-white text-[#000000] placeholder:text-[#666666] border-[#666666] focus:border-[#0a66c2] focus:outline-[#0a66c2]"
         required
       />
 
       <button
         type="submit"
         disabled={isLoading}
-        className="btn btn-primary w-full text-white"
+        className="btn w-full bg-[#0a66c2] hover:bg-[#004182] border-[#0a66c2] hover:border-[#004182] text-white"
       >
         {isLoading ? (
           <Loader className="size-5 animate-spin" />
