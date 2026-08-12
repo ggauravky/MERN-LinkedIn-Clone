@@ -4,6 +4,7 @@ import HomePage from "./pages/HomePage";
 import SignupPage from "./pages/auth/SignUpPage";
 import LoginPage from "./pages/auth/LoginPage";
 import { Toaster } from "react-hot-toast";
+import { useQuery } from "@tanstack/react-query";
 
 function App() {
   const { data: authUser,isLoading } = useQuery({
