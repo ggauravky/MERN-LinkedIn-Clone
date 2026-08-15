@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { axiosInstance } from "../../lib/axios";
+import { axiosInstance } from "../lib/axios";
 import { Link } from "react-router-dom";
 import { Bell, Home, LogOut, User, Users } from "lucide-react";
 
 const Navbar = () => {
-  const { data: authUser } = useQuery({ queryKey: ["authUser"] });
   const queryClient = useQueryClient();
+  const authUser = queryClient.getQueryData(["authUser"]);
 
   const { data: notifications } = useQuery({
     queryKey: ["notifications"],

@@ -105,9 +105,17 @@ export const logout = async (req, res) => {
 
 export const getCurrentUser = async (req, res) => {
   try {
-    res.json(req.user);
+    const token = req.cookies["jwt-linkedin"];
+
+    if (!token) {
+      return res.status(200).json(null);
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId).select("-password");
+
+    return res.status(200).json(user || null);
   } catch (error) {
-    console.error("Error in getCurrentUser controller:", error);
-    res.status(500).json({ message: "Server error" });
+    return res.status(200).json(null);
   }
 };
