@@ -103,7 +103,7 @@ export const createComment = async (req, res) => {
 
     //create a notification if the post author is not the same as the comment author
 
-    if (post.author.toString() !== req.user._id.toString()) {
+    if (post.author._id.toString() !== req.user._id.toString()) {
       const newNotification = new Notification({
         recipient: post.author,
         type: "comment",
