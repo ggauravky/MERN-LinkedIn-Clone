@@ -56,6 +56,10 @@ function App() {
           path="/network"
           element={authUser ? <NetworkPage /> : <Navigate to="/login" />}
         />
+        <Route
+          path="/post/:postId"
+          element={authUser ? <PostPage /> : <Navigate to="/login" />}
+        />
       </Routes>
       <Toaster />
     </Layout>
