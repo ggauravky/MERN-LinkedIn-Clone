@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
 import { Link, useParams } from "react-router-dom";
@@ -21,11 +21,17 @@ const Post = ({ post }) => {
   const { data: authUser } = useQuery({ queryKey: ["authUser"] });
   const [showComments, setShowComments] = useState(false);
   const [newComment, setNewComment] = useState("");
-  const [comments, setComments] = useState(post.comments || []);
-  const isOwner = authUser._id === post.author._id;
-  const isLiked = post.likes.includes(authUser._id);
+  const [comments, setComments] = useState(post?.comments || []);
+  const isOwner = authUser?._id === post?.author?._id;
+  const isLiked = Boolean(post?.likes?.includes(authUser?._id));
 
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    setComments(post?.comments || []);
+  }, [post?.comments]);
+
+  if (!post || !post.author) return null;
 
   const { mutate: deletePost, isPending: isDeletingPost } = useMutation({
     mutationFn: async () => {
@@ -42,16 +48,17 @@ const Post = ({ post }) => {
 
   const { mutate: createComment, isPending: isAddingComment } = useMutation({
     mutationFn: async (newComment) => {
-      await axiosInstance.post(`/posts/${post._id}/comment`, {
+      await axiosInstance.post(`/posts/${post._id}/comments`, {
         content: newComment,
       });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
+      queryClient.invalidateQueries({ queryKey: ["post", post._id] });
       toast.success("Comment added successfully");
     },
     onError: (err) => {
-      toast.error(err.response.data.message || "Failed to add comment");
+      toast.error(err.response?.data?.message || err.message || "Failed to add comment");
     },
   });
 
@@ -78,20 +85,22 @@ const Post = ({ post }) => {
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (newComment.trim()) {
-      createComment(newComment);
+      const commentText = newComment;
       setNewComment("");
-      setComments([
-        ...comments,
+      setComments((prev) => [
+        ...prev,
         {
-          content: newComment,
+          _id: `temp-${Date.now()}-${Math.random()}`,
+          content: commentText,
           user: {
-            _id: authUser._id,
-            name: authUser.name,
-            profilePicture: authUser.profilePicture,
+            _id: authUser?._id,
+            name: authUser?.name,
+            profilePicture: authUser?.profilePicture,
           },
           createdAt: new Date(),
         },
       ]);
+      createComment(commentText);
     }
   };
 
@@ -100,23 +109,25 @@ const Post = ({ post }) => {
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Link to={`/profile/${post?.author?.username}`}>
+            <Link to={`/profile/${post.author?.username || ""}`}>
               <img
-                src={post.author.profilePicture || "/avatar.png"}
-                alt={post.author.name}
-                className="size-10 rounded-full mr-3"
+                src={post.author?.profilePicture || "/avatar.png"}
+                alt={post.author?.name || "User"}
+                className="size-10 rounded-full object-cover mr-3"
               />
             </Link>
 
             <div>
-              <Link to={`/profile/${post?.author?.username}`}>
-                <h3 className="font-semibold">{post.author.name}</h3>
+              <Link to={`/profile/${post.author?.username || ""}`}>
+                <h3 className="font-semibold">{post.author?.name || "User"}</h3>
               </Link>
-              <p className="text-xs text-info">{post.author.headline}</p>
+              <p className="text-xs text-info">{post.author?.headline || ""}</p>
               <p className="text-xs text-info">
-                {formatDistanceToNow(new Date(post.createdAt), {
-                  addSuffix: true,
-                })}
+                {post.createdAt && !isNaN(new Date(post.createdAt))
+                  ? formatDistanceToNow(new Date(post.createdAt), {
+                      addSuffix: true,
+                    })
+                  : ""}
               </p>
             </div>
           </div>
@@ -135,11 +146,13 @@ const Post = ({ post }) => {
         </div>
         <p className="mb-4">{post.content}</p>
         {post.image && (
-          <img
-            src={post.image}
-            alt="Post content"
-            className="rounded-lg w-full mb-4"
-          />
+          <div className="rounded-lg overflow-hidden mb-4 bg-black/5 flex items-center justify-center max-h-[520px]">
+            <img
+              src={post.image}
+              alt="Post content"
+              className="w-full h-auto max-h-[520px] object-contain rounded-lg mx-auto"
+            />
+          </div>
         )}
 
         <div className="flex justify-between text-info">
@@ -150,7 +163,7 @@ const Post = ({ post }) => {
                 className={isLiked ? "text-blue-500  fill-blue-300" : ""}
               />
             }
-            text={`Like (${post.likes.length})`}
+            text={`Like (${post.likes?.length || 0})`}
             onClick={handleLikePost}
           />
 
@@ -166,23 +179,25 @@ const Post = ({ post }) => {
       {showComments && (
         <div className="px-4 pb-4">
           <div className="mb-4 max-h-60 overflow-y-auto">
-            {comments.map((comment) => (
+            {comments.map((comment, index) => (
               <div
-                key={comment._id}
+                key={comment._id || `comment-${index}`}
                 className="mb-2 bg-base-100 p-2 rounded flex items-start"
               >
                 <img
-                  src={comment.user.profilePicture || "/avatar.png"}
-                  alt={comment.user.name}
-                  className="w-8 h-8 rounded-full mr-2 flex-shrink-0"
+                  src={comment.user?.profilePicture || "/avatar.png"}
+                  alt={comment.user?.name || "User"}
+                  className="w-8 h-8 rounded-full object-cover mr-2 flex-shrink-0"
                 />
                 <div className="flex-grow">
                   <div className="flex items-center mb-1">
                     <span className="font-semibold mr-2">
-                      {comment.user.name}
+                      {comment.user?.name || "User"}
                     </span>
                     <span className='text-xs text-info'>
-                    {formatDistanceToNow(new Date(comment.createdAt))}
+                    {comment.createdAt && !isNaN(new Date(comment.createdAt))
+                      ? formatDistanceToNow(new Date(comment.createdAt))
+                      : ""}
                     </span>
                   </div>
                   <p>{comment.content}</p>

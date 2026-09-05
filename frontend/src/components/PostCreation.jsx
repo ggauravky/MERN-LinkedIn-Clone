@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
-import { Image, Loader } from "lucide-react";
+import { Image, Loader, X } from "lucide-react";
 
 const PostCreation = ({ user }) => {
   const [content, setContent] = useState("");
@@ -24,7 +24,7 @@ const PostCreation = ({ user }) => {
       queryClient.invalidateQueries({ queryKey: ["posts"] });
     },
     onError: (err) => {
-      toast.error(err.response.data.message || "Failed to create post");
+      toast.error(err.response?.data?.message || err.message || "Failed to create post");
     },
   });
 
@@ -68,9 +68,9 @@ const PostCreation = ({ user }) => {
     <div className="bg-secondary rounded-lg shadow mb-4 p-4">
       <div className="flex space-x-3">
         <img
-          src={user.profilePicture || "/avatar.png"}
-          alt={user.name}
-          className="size-12 rounded-full"
+          src={user?.profilePicture || "/avatar.png"}
+          alt={user?.name || "User"}
+          className="size-12 rounded-full object-cover"
         />
         <textarea
           placeholder="What's on your mind?"
@@ -81,12 +81,23 @@ const PostCreation = ({ user }) => {
       </div>
 
       {imagePreview && (
-        <div className="mt-4">
+        <div className="mt-4 relative rounded-lg overflow-hidden bg-black/5 flex items-center justify-center max-h-[420px]">
           <img
             src={imagePreview}
             alt="Selected"
-            className="w-full h-auto rounded-lg"
+            className="w-full h-auto max-h-[420px] object-contain rounded-lg"
           />
+          <button
+            type="button"
+            onClick={() => {
+              setImage(null);
+              setImagePreview(null);
+            }}
+            className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white p-1.5 rounded-full transition-colors"
+            title="Remove image"
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
 

@@ -5,12 +5,14 @@ import {sendCommentNotificationEmail } from "../emails/emailHandlers.js";
 
 export const getFeedPosts = async (req, res) => {
 	try {
-		const posts = await Post.find({ author: { $in: [...req.user.connections, req.user._id] } })
+		const posts = await Post.find()
 			.populate("author", "name username profilePicture headline")
 			.populate("comments.user", "name profilePicture")
 			.sort({ createdAt: -1 });
 
-		res.status(200).json(posts);
+		const validPosts = posts.filter((post) => post.author != null);
+
+		res.status(200).json(validPosts);
 	} catch (error) {
 		console.error("Error in getFeedPosts controller:", error);
 		res.status(500).json({ message: "Server error" });
@@ -101,24 +103,34 @@ export const createComment = async (req, res) => {
       { new: true }
     ).populate("author", "name email username profilePicture headline ");
 
-    //create a notification if the post author is not the same as the comment author
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
 
-    if (post.author._id.toString() !== req.user._id.toString()) {
+    // create a notification and send email if commenter is not post author
+    if (post.author && post.author._id.toString() !== req.user._id.toString()) {
       const newNotification = new Notification({
-        recipient: post.author,
+        recipient: post.author._id,
         type: "comment",
         relatedUser: req.user._id,
-        relatedPost: postId
+        relatedPost: postId,
       });
       await newNotification.save();
 
-      try{
-        const postUrl =process.env.CLIENT_URL + "/post/" + postId;
-        await sendCommentNotificationEmail(post.author.email, post.author.name, req.user.name, postUrl, content);
-      }catch (error) {
+      try {
+        const postUrl = process.env.CLIENT_URL + "/post/" + postId;
+        if (post.author.email) {
+          await sendCommentNotificationEmail(
+            post.author.email,
+            post.author.name,
+            req.user.name,
+            postUrl,
+            content
+          );
+        }
+      } catch (error) {
         console.error("Error sending email notification:", error);
       }
-
     }
 
     res.status(201).json(post.comments[post.comments.length - 1]);
@@ -128,24 +140,28 @@ export const createComment = async (req, res) => {
   }
 };
 
-
 export const likePost = async (req, res) => {
-  try{
+  try {
     const postId = req.params.id;
     const post = await Post.findById(postId);
     const userId = req.user._id;
 
-    if(post.likes.includes(userId)){
-      post.likes=post.likes.filter((id)=>id.toString()!==userId.toString());
-    }else{
+    if (!post) {
+      return res.status(404).json({ message: "Post not found" });
+    }
+
+    const hasLiked = post.likes.some((id) => id.toString() === userId.toString());
+    if (hasLiked) {
+      post.likes = post.likes.filter((id) => id.toString() !== userId.toString());
+    } else {
       post.likes.push(userId);
-      //create a notification if the post author is not the same as the liker
-      if (post.author.toString() !== userId.toString()) {
+      // create a notification if the post author is not the same as the liker
+      if (post.author && post.author.toString() !== userId.toString()) {
         const newNotification = new Notification({
           recipient: post.author,
           type: "like",
           relatedUser: userId,
-          relatedPost: postId
+          relatedPost: postId,
         });
         await newNotification.save();
       }

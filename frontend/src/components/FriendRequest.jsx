@@ -14,7 +14,7 @@ const FriendRequest = ({ request }) => {
       queryClient.invalidateQueries({ queryKey: ["connectionRequests"] });
     },
     onError: (error) => {
-      toast.error(error.response.data.error);
+      toast.error(error.response?.data?.message || error.response?.data?.error || error.message || "An error occurred");
     },
   });
 
@@ -26,7 +26,7 @@ const FriendRequest = ({ request }) => {
       queryClient.invalidateQueries({ queryKey: ["connectionRequests"] });
     },
     onError: (error) => {
-      toast.error(error.response.data.error);
+      toast.error(error.response?.data?.message || error.response?.data?.error || error.message || "An error occurred");
     },
   });
 

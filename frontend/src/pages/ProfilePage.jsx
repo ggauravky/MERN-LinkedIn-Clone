@@ -28,7 +28,8 @@ const ProfilePage = () => {
         },
         onSuccess: () => {
             toast.success("Profile updated successfully");
-            queryClient.invalidateQueries(["userProfile", username]);
+            queryClient.invalidateQueries({ queryKey: ["userProfile", username] });
+            queryClient.invalidateQueries({ queryKey: ["authUser"] });
         },
     });
 

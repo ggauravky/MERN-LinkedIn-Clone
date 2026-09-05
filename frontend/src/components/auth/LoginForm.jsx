@@ -9,13 +9,18 @@ const LoginForm = () => {
   const [password, setPassword] = useState("");
   const queryClient = useQueryClient();
 
-  const { mutate: loginMutation, isLoading } = useMutation({
+  const { mutate: loginMutation, isPending } = useMutation({
     mutationFn: (userData) => axiosInstance.post("/auth/login", userData),
     onSuccess: () => {
+      toast.success("Logged in successfully");
       queryClient.invalidateQueries({ queryKey: ["authUser"] });
     },
     onError: (err) => {
-      toast.error(err.response.data.message || "Something went wrong");
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to log in. Please check your connection.";
+      toast.error(errorMessage);
     },
   });
 
@@ -28,7 +33,7 @@ const LoginForm = () => {
     <form onSubmit={handleSubmit} className="space-y-4 w-full max-w-md">
       <input
         type="text"
-        placeholder="Username"
+        placeholder="Username or Email"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
         className="input input-bordered w-full"
@@ -43,8 +48,8 @@ const LoginForm = () => {
         required
       />
 
-      <button type="submit" className="btn btn-primary w-full">
-        {isLoading ? <Loader className="size-5 animate-spin" /> : "Login"}
+      <button type="submit" className="btn btn-primary w-full" disabled={isPending}>
+        {isPending ? <Loader className="size-5 animate-spin" /> : "Login"}
       </button>
     </form>
   );

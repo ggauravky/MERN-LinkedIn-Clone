@@ -3,25 +3,25 @@ import { Home, UserPlus, Bell } from "lucide-react";
 
 export default function Sidebar({ user }) {
   return (
-    <div className="bg-secondary rounded-lg shadow">
+    <div className="bg-secondary rounded-lg shadow overflow-hidden">
+      <div
+        className="h-16 sm:h-20 bg-cover bg-center"
+        style={{
+          backgroundImage: `url("${user?.bannerImg || "/banner.png"}")`,
+        }}
+      />
       <div className="p-4 text-center">
-        <div
-          className="h-16 rounded-t-lg bg-cover bg-center"
-          style={{
-            backgroundImage: `url("${user.bannerImg || "/banner.png"}")`,
-          }}
-        />
-        <Link to={`/profile/${user.username}`}>
+        <Link to={`/profile/${user?.username || ""}`}>
           <img
-            src={user.profilePicture || "/avatar.png"}
-            alt={user.name}
-            className="w-20 h-20 rounded-full mx-auto mt-[-40px]"
+            src={user?.profilePicture || "/avatar.png"}
+            alt={user?.name || "User"}
+            className="w-20 h-20 rounded-full mx-auto -mt-12 object-cover border-2 border-white shadow"
           />
-          <h2 className="text-xl font-semibold mt-2">{user.name}</h2>
+          <h2 className="text-xl font-semibold mt-2">{user?.name}</h2>
         </Link>
-        <p className="text-info">{user.headline}</p>
+        <p className="text-info">{user?.headline}</p>
         <p className="text-info text-xs">
-          {user.connections.length} connections
+          {user?.connections?.length ?? 0} connections
         </p>
       </div>
       <div className="border-t border-base-100 p-4">
@@ -56,7 +56,7 @@ export default function Sidebar({ user }) {
       </div>
       <div className="border-t border-base-100 p-4">
         <Link
-          to={`/profile/${user.username}`}
+          to={`/profile/${user?.username || ""}`}
           className="text-sm font-semibold"
         >
           Visit your profile

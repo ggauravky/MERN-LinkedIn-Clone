@@ -12,7 +12,7 @@ const SignUpForm = () => {
 
   const queryClient = useQueryClient();
 
-  const { mutate: signUpMutation, isLoading } = useMutation({
+  const { mutate: signUpMutation, isPending } = useMutation({
     mutationFn: async (data) => {
       const res = await axiosInstance.post("/auth/signup", data);
       return res.data;
@@ -22,7 +22,11 @@ const SignUpForm = () => {
       queryClient.invalidateQueries({ queryKey: ["authUser"] });
     },
     onError: (err) => {
-      toast.error(err.response.data.message || "Something went wrong");
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to create account. Please check your connection.";
+      toast.error(errorMessage);
     },
   });
 
@@ -68,10 +72,10 @@ const SignUpForm = () => {
 
       <button
         type="submit"
-        disabled={isLoading}
+        disabled={isPending}
         className="btn w-full bg-[#0a66c2] hover:bg-[#004182] border-[#0a66c2] hover:border-[#004182] text-white"
       >
-        {isLoading ? (
+        {isPending ? (
           <Loader className="size-5 animate-spin" />
         ) : (
           "Agree & Join"
