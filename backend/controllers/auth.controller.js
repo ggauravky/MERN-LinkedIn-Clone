@@ -46,7 +46,7 @@ export const signup = async (req, res) => {
     res.cookie("jwt-linkedin", token, {
       httpOnly: true,
       maxAge: 3 * 24 * 60 * 60 * 1000,
-      sameSite: "strict",
+      sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
     });
     res.status(201).json({ message: "User registered successfully" });
@@ -68,8 +68,21 @@ export const login = async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    // Check if user exists
-    const user = await User.findOne({ username });
+    if (!username || !password) {
+      return res.status(400).json({ message: "Please provide both username/email and password" });
+    }
+
+    const input = username.trim();
+    const escapedInput = input.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
+
+    // Check if user exists by either username or email (case-insensitive)
+    const user = await User.findOne({
+      $or: [
+        { username: { $regex: new RegExp(`^${escapedInput}$`, "i") } },
+        { email: { $regex: new RegExp(`^${escapedInput}$`, "i") } },
+      ],
+    });
+
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
@@ -84,10 +97,10 @@ export const login = async (req, res) => {
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "3d",
     });
-    await res.cookie("jwt-linkedin", token, {
+    res.cookie("jwt-linkedin", token, {
       httpOnly: true,
       maxAge: 3 * 24 * 60 * 60 * 1000,
-      sameSite: "strict",
+      sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
     });
 
