@@ -5,8 +5,8 @@ export const getUserNotifications = async (req, res) => {
     const notifications = await Notification.find({ recipient: req.user._id })
       .sort({ createdAt: -1 })
       .populate("relatedUser", "name profilePicture username")
-      .populate("relatedPost", "title content");
-    res.status(200).json(notifications);
+      .populate("relatedPost", "content image");
+    res.status(200).json(notifications.filter((n) => n.relatedUser != null));
   } catch (error) {
     console.error("Error fetching notifications:", error);
     res.status(500).json({ message: "Internal server error" });

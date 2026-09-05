@@ -12,14 +12,14 @@ const RecommendedUser = ({ user }) => {
 		queryFn: () => axiosInstance.get(`/connections/status/${user._id}`),
 	});
 
-	const { mutate: sendConnectionRequest } = useMutation({
+	const { mutate: sendConnectionRequest, isPending: isSendingRequest } = useMutation({
 		mutationFn: (userId) => axiosInstance.post(`/connections/request/${userId}`),
 		onSuccess: () => {
 			toast.success("Connection request sent successfully");
 			queryClient.invalidateQueries({ queryKey: ["connectionStatus", user._id] });
 		},
 		onError: (error) => {
-			toast.error(error.response?.data?.error || "An error occurred");
+			toast.error(error.response?.data?.message || error.response?.data?.error || "An error occurred");
 		},
 	});
 
@@ -30,7 +30,7 @@ const RecommendedUser = ({ user }) => {
 			queryClient.invalidateQueries({ queryKey: ["connectionStatus", user._id] });
 		},
 		onError: (error) => {
-			toast.error(error.response?.data?.error || "An error occurred");
+			toast.error(error.response?.data?.message || error.response?.data?.error || "An error occurred");
 		},
 	});
 
@@ -41,7 +41,7 @@ const RecommendedUser = ({ user }) => {
 			queryClient.invalidateQueries({ queryKey: ["connectionStatus", user._id] });
 		},
 		onError: (error) => {
-			toast.error(error.response?.data?.error || "An error occurred");
+			toast.error(error.response?.data?.message || error.response?.data?.error || "An error occurred");
 		},
 	});
 
@@ -95,18 +95,19 @@ const RecommendedUser = ({ user }) => {
 			default:
 				return (
 					<button
-						className='px-3 py-1 rounded-full text-sm border border-primary text-primary hover:bg-primary hover:text-white transition-colors duration-200 flex items-center'
+						className='px-3 py-1 rounded-full text-sm border border-primary text-primary hover:bg-primary hover:text-white transition-colors duration-200 flex items-center disabled:opacity-50'
 						onClick={handleConnect}
+						disabled={isSendingRequest}
 					>
 						<UserPlus size={16} className='mr-1' />
-						Connect
+						{isSendingRequest ? "Sending..." : "Connect"}
 					</button>
 				);
 		}
 	};
 
 	const handleConnect = () => {
-		if (connectionStatus?.data?.status === "not_connected") {
+		if (!connectionStatus?.data?.status || connectionStatus?.data?.status === "not_connected") {
 			sendConnectionRequest(user._id);
 		}
 	};
@@ -117,7 +118,7 @@ const RecommendedUser = ({ user }) => {
 				<img
 					src={user.profilePicture || "/avatar.png"}
 					alt={user.name}
-					className='w-12 h-12 rounded-full mr-3'
+					className='w-12 h-12 rounded-full object-cover mr-3'
 				/>
 				<div>
 					<h3 className='font-semibold text-sm'>{user.name}</h3>

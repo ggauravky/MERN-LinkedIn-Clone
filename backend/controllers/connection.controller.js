@@ -1,4 +1,4 @@
-import { sendConnectionAcceptedEmail } from "../emails/emailHandlers.js";
+import { sendConnectionAcceptedEmail, sendConnectionRequestEmail } from "../emails/emailHandlers.js";
 import ConnectionRequest from "../models/connectionRequest.model.js";
 import Notification from "../models/notification.model.js";
 import User from "../models/user.model.js";
@@ -8,17 +8,19 @@ export const sendConnectionRequest = async (req, res) => {
 		const { userId } = req.params;
 		const senderId = req.user._id;
 
-		if (senderId.toString() === userId) {
+		if (senderId.toString() === userId.toString()) {
 			return res.status(400).json({ message: "You can't send a request to yourself" });
 		}
 
-		if (req.user.connections.includes(userId)) {
+		if (req.user.connections.some((id) => id.toString() === userId.toString())) {
 			return res.status(400).json({ message: "You are already connected" });
 		}
 
 		const existingRequest = await ConnectionRequest.findOne({
-			sender: senderId,
-			recipient: userId,
+			$or: [
+				{ sender: senderId, recipient: userId },
+				{ sender: userId, recipient: senderId },
+			],
 			status: "pending",
 		});
 
@@ -34,6 +36,23 @@ export const sendConnectionRequest = async (req, res) => {
 		await newRequest.save();
 
 		res.status(201).json({ message: "Connection request sent successfully" });
+
+		// Send email notification to recipient
+		try {
+			const recipientUser = await User.findById(userId);
+			if (recipientUser && recipientUser.email) {
+				const networkUrl = (process.env.CLIENT_URL || "http://localhost:5173") + "/network";
+				await sendConnectionRequestEmail(
+					recipientUser.email,
+					recipientUser.name,
+					req.user.name,
+					req.user.headline,
+					networkUrl
+				);
+			}
+		} catch (emailError) {
+			console.error("Error in sending connection request email:", emailError);
+		}
 	} catch (error) {
 		res.status(500).json({ message: "Server error" });
 	}
@@ -81,7 +100,7 @@ export const acceptConnectionRequest = async (req, res) => {
 		const senderEmail = request.sender.email;
 		const senderName = request.sender.name;
 		const recipientName = request.recipient.name;
-		const profileUrl = process.env.CLIENT_URL + "/profile/" + request.recipient.username;
+		const profileUrl = (process.env.CLIENT_URL || "http://localhost:5173") + "/profile/" + request.recipient.username;
 
 		try {
 			await sendConnectionAcceptedEmail(senderEmail, senderName, recipientName, profileUrl);
@@ -128,7 +147,7 @@ export const getConnectionRequests = async (req, res) => {
 			"name username profilePicture headline connections"
 		);
 
-		res.json(requests);
+		res.json(requests.filter((req) => req.sender != null));
 	} catch (error) {
 		console.error("Error in getConnectionRequests controller:", error);
 		res.status(500).json({ message: "Server error" });
@@ -144,7 +163,7 @@ export const getUserConnections = async (req, res) => {
 			"name username profilePicture headline connections"
 		);
 
-		res.json(user.connections);
+		res.json((user?.connections || []).filter(Boolean));
 	} catch (error) {
 		console.error("Error in getUserConnections controller:", error);
 		res.status(500).json({ message: "Server error" });
@@ -159,6 +178,14 @@ export const removeConnection = async (req, res) => {
 		await User.findByIdAndUpdate(myId, { $pull: { connections: userId } });
 		await User.findByIdAndUpdate(userId, { $pull: { connections: myId } });
 
+		// Also delete any connection requests between these two users (pending or accepted)
+		await ConnectionRequest.deleteMany({
+			$or: [
+				{ sender: myId, recipient: userId },
+				{ sender: userId, recipient: myId },
+			],
+		});
+
 		res.json({ message: "Connection removed successfully" });
 	} catch (error) {
 		console.error("Error in removeConnection controller:", error);
@@ -172,7 +199,7 @@ export const getConnectionStatus = async (req, res) => {
 		const currentUserId = req.user._id;
 
 		const currentUser = req.user;
-		if (currentUser.connections.includes(targetUserId)) {
+		if (currentUser.connections?.some((connId) => connId.toString() === targetUserId.toString())) {
 			return res.json({ status: "connected" });
 		}
 

@@ -4,9 +4,9 @@ import cloudinary from "../lib/cloudinary.js";
 export const getSuggestConnections = async (req, res) => {
   try {
     const currentUser = await User.findById(req.user._id).select("connections");
+    const connections = currentUser?.connections || [];
     const suggestedUser = await User.find({
-      _id: { $ne: req.user._id },
-      _id: { $nin: currentUser.connections },
+      _id: { $nin: [...connections, req.user._id] },
     })
       .select("name username profilePicture headline")
       .limit(4);
@@ -50,7 +50,7 @@ export const updateProfile = async (req, res) => {
     const updatedData = {};
 
     for (const field of allowedFields) {
-      if (req.body[field]) {
+      if (req.body[field] !== undefined) {
         updatedData[field] = req.body[field];
       }
     }

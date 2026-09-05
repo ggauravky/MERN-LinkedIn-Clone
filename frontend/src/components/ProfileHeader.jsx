@@ -18,50 +18,58 @@ const ProfileHeader = ({ userData, onSave, isOwnProfile }) => {
         enabled: !isOwnProfile,
     });
 
-    const isConnected = userData.connections.some((connection) => connection === authUser._id);
+    const isConnected = userData?.connections?.some(
+        (connection) => (connection?._id || connection)?.toString() === authUser?._id?.toString()
+    );
 
-    const { mutate: sendConnectionRequest } = useMutation({
+    const { mutate: sendConnectionRequest, isPending: isSendingRequest } = useMutation({
         mutationFn: (userId) => axiosInstance.post(`/connections/request/${userId}`),
         onSuccess: () => {
             toast.success("Connection request sent");
             refetchConnectionStatus();
-            queryClient.invalidateQueries(["connectionRequests"]);
+            queryClient.invalidateQueries({ queryKey: ["connectionStatus", userData?._id] });
+            queryClient.invalidateQueries({ queryKey: ["connectionRequests"] });
         },
         onError: (error) => {
             toast.error(error.response?.data?.message || "An error occurred");
         },
     });
 
-    const { mutate: acceptRequest } = useMutation({
+    const { mutate: acceptRequest, isPending: isAcceptingRequest } = useMutation({
         mutationFn: (requestId) => axiosInstance.put(`/connections/accept/${requestId}`),
         onSuccess: () => {
             toast.success("Connection request accepted");
             refetchConnectionStatus();
-            queryClient.invalidateQueries(["connectionRequests"]);
+            queryClient.invalidateQueries({ queryKey: ["connectionStatus", userData?._id] });
+            queryClient.invalidateQueries({ queryKey: ["connectionRequests"] });
+            queryClient.invalidateQueries({ queryKey: ["connections"] });
         },
         onError: (error) => {
             toast.error(error.response?.data?.message || "An error occurred");
         },
     });
 
-    const { mutate: rejectRequest } = useMutation({
+    const { mutate: rejectRequest, isPending: isRejectingRequest } = useMutation({
         mutationFn: (requestId) => axiosInstance.put(`/connections/reject/${requestId}`),
         onSuccess: () => {
             toast.success("Connection request rejected");
             refetchConnectionStatus();
-            queryClient.invalidateQueries(["connectionRequests"]);
+            queryClient.invalidateQueries({ queryKey: ["connectionStatus", userData?._id] });
+            queryClient.invalidateQueries({ queryKey: ["connectionRequests"] });
         },
         onError: (error) => {
             toast.error(error.response?.data?.message || "An error occurred");
         },
     });
 
-    const { mutate: removeConnection } = useMutation({
+    const { mutate: removeConnection, isPending: isRemovingConnection } = useMutation({
         mutationFn: (userId) => axiosInstance.delete(`/connections/${userId}`),
         onSuccess: () => {
-            toast.success("Connection removed");
+            toast.success("Connection updated");
             refetchConnectionStatus();
-            queryClient.invalidateQueries(["connectionRequests"]);
+            queryClient.invalidateQueries({ queryKey: ["connectionStatus", userData?._id] });
+            queryClient.invalidateQueries({ queryKey: ["connectionRequests"] });
+            queryClient.invalidateQueries({ queryKey: ["connections"] });
         },
         onError: (error) => {
             toast.error(error.response?.data?.message || "An error occurred");
@@ -69,9 +77,8 @@ const ProfileHeader = ({ userData, onSave, isOwnProfile }) => {
     });
 
     const getConnectionStatus = useMemo(() => {
-        if (isConnected) return "connected";
-        if (!isConnected) return "not_connected";
-        return connectionStatus?.data?.status;
+        if (isConnected || connectionStatus?.data?.status === "connected") return "connected";
+        return connectionStatus?.data?.status || "not_connected";
     }, [isConnected, connectionStatus]);
 
     const renderConnectionButton = () => {
@@ -85,21 +92,33 @@ const ProfileHeader = ({ userData, onSave, isOwnProfile }) => {
                             Connected
                         </div>
                         <button
-                            className={`${baseClass} bg-red-500 hover:bg-red-600 text-sm`}
+                            className={`${baseClass} bg-red-500 hover:bg-red-600 text-sm disabled:opacity-50`}
                             onClick={() => removeConnection(userData._id)}
+                            disabled={isRemovingConnection}
                         >
                             <X size={20} className='mr-2' />
-                            Remove Connection
+                            {isRemovingConnection ? "Removing..." : "Remove Connection"}
                         </button>
                     </div>
                 );
 
             case "pending":
                 return (
-                    <button className={`${baseClass} bg-yellow-500 hover:bg-yellow-600`}>
-                        <Clock size={20} className='mr-2' />
-                        Pending
-                    </button>
+                    <div className='flex gap-2 justify-center'>
+                        <div className={`${baseClass} bg-yellow-500 text-white cursor-default`}>
+                            <Clock size={20} className='mr-2' />
+                            Pending
+                        </div>
+                        <button
+                            className={`${baseClass} bg-red-500 hover:bg-red-600 text-sm disabled:opacity-50`}
+                            onClick={() => removeConnection(userData._id)}
+                            disabled={isRemovingConnection}
+                            title="Withdraw connection request"
+                        >
+                            <X size={20} className='mr-2' />
+                            {isRemovingConnection ? "Withdrawing..." : "Withdraw"}
+                        </button>
+                    </div>
                 );
 
             case "received":
@@ -107,15 +126,17 @@ const ProfileHeader = ({ userData, onSave, isOwnProfile }) => {
                     <div className='flex gap-2 justify-center'>
                         <button
                             onClick={() => acceptRequest(connectionStatus.data.requestId)}
-                            className={`${baseClass} bg-green-500 hover:bg-green-600`}
+                            className={`${baseClass} bg-green-500 hover:bg-green-600 disabled:opacity-50`}
+                            disabled={isAcceptingRequest}
                         >
-                            Accept
+                            {isAcceptingRequest ? "Accepting..." : "Accept"}
                         </button>
                         <button
                             onClick={() => rejectRequest(connectionStatus.data.requestId)}
-                            className={`${baseClass} bg-red-500 hover:bg-red-600`}
+                            className={`${baseClass} bg-red-500 hover:bg-red-600 disabled:opacity-50`}
+                            disabled={isRejectingRequest}
                         >
-                            Reject
+                            {isRejectingRequest ? "Rejecting..." : "Reject"}
                         </button>
                     </div>
                 );
@@ -123,10 +144,11 @@ const ProfileHeader = ({ userData, onSave, isOwnProfile }) => {
                 return (
                     <button
                         onClick={() => sendConnectionRequest(userData._id)}
-                        className='bg-primary hover:bg-primary-dark text-white py-2 px-4 rounded-full transition duration-300 flex items-center justify-center'
+                        disabled={isSendingRequest}
+                        className='bg-primary hover:bg-primary-dark disabled:opacity-50 text-white py-2 px-4 rounded-full transition duration-300 flex items-center justify-center'
                     >
                         <UserPlus size={20} className='mr-2' />
-                        Connect
+                        {isSendingRequest ? "Sending..." : "Connect"}
                     </button>
                 );
         }
